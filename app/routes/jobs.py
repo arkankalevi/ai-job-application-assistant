@@ -59,12 +59,28 @@ def analyze_job(
             detail="Job not found"
         )
 
+    # Check cached analysis first
+    cached_analysis = (
+        db.query(JobAnalysis)
+        .filter(JobAnalysis.job_id == job.id)
+        .order_by(JobAnalysis.created_at.desc())
+        .first()
+    )
+
+    if cached_analysis:
+        return {
+            "job_id": job.id,
+            "analysis": cached_analysis.analysis
+        }
+
+    # If no cache exists, call Gemini
     analysis = analyze_job_description(
         title=job.title,
         company=job.company,
         job_description=job.job_description
     )
 
+    # Save AI analysis to database
     job_analysis = JobAnalysis(
         job_id=job.id,
         analysis=analysis
