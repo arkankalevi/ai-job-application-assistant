@@ -17,3 +17,24 @@ class JobResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class JobApplicationCreate(BaseModel):
+    job_id: int
+    status: str = "applied"
+    notes: str | None = None
+
+
+class JobApplicationResponse(BaseModel):
+    id: int
+    user_id: int
+    job_id: int
+    status: str
+    notes: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class JobAnalysisResponse(BaseModel):
+    job_id: int
+    analysis: str

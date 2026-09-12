@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.auth.security import get_current_user
+from app.services.ai import analyze_job_description
 from app.database import get_db
-from app.models import Job
-from app.schemas import JobCreate, JobResponse
+from app.models import Job, JobAnalysis
+from app.schemas import JobCreate, JobResponse, JobAnalysisResponse
 
 
 router = APIRouter(
@@ -35,3 +36,45 @@ def create_job(
     db.refresh(job)
 
     return job
+
+
+@router.post(
+    "/{job_id}/analyze",
+    response_model=JobAnalysisResponse
+)
+def analyze_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    job = (
+        db.query(Job)
+        .filter(Job.id == job_id)
+        .first()
+    )
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    analysis = analyze_job_description(
+        title=job.title,
+        company=job.company,
+        job_description=job.job_description
+    )
+
+    job_analysis = JobAnalysis(
+        job_id=job.id,
+        analysis=analysis
+    )
+
+    db.add(job_analysis)
+    db.commit()
+    db.refresh(job_analysis)
+
+    return {
+        "job_id": job.id,
+        "analysis": analysis
+    }
