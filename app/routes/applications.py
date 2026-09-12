@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.auth.models import User
 from app.auth.security import get_current_user
 from app.database import get_db
-from app.models import Job, JobApplication
+from app.models import Job, JobApplication, CoverLetter
 from app.schemas import (
     JobApplicationCreate,
     JobApplicationResponse,
@@ -108,13 +108,40 @@ def create_cover_letter(
             detail="Job not found"
         )
 
+    # Check if a cover letter already exists
+    existing_cover_letter = (
+        db.query(CoverLetter)
+        .filter(
+            CoverLetter.application_id == application.id
+        )
+        .order_by(CoverLetter.created_at.desc())
+        .first()
+    )
+
+    if existing_cover_letter:
+        return {
+            "application_id": application.id,
+            "cover_letter": existing_cover_letter.content
+        }
+
+    # Generate a new cover letter with Gemini
     cover_letter = generate_cover_letter(
         title=job.title,
         company=job.company,
         job_description=job.job_description
     )
 
+    # Save cover letter to database
+    new_cover_letter = CoverLetter(
+        application_id=application.id,
+        content=cover_letter
+    )
+
+    db.add(new_cover_letter)
+    db.commit()
+    db.refresh(new_cover_letter)
+
     return {
         "application_id": application.id,
-        "cover_letter": cover_letter
+        "cover_letter": new_cover_letter.content
     }
