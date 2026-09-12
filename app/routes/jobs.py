@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.auth.security import get_current_user
-from app.services.ai import analyze_job_description
 from app.database import get_db
 from app.models import Job, JobAnalysis
 from app.schemas import JobCreate, JobResponse, JobAnalysisResponse
+from app.services.ai import analyze_job_description
+from app.services.report import create_job_analysis_pdf
 
 
 router = APIRouter(
@@ -47,6 +49,7 @@ def analyze_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Find the job
     job = (
         db.query(Job)
         .filter(Job.id == job_id)
@@ -80,7 +83,7 @@ def analyze_job(
         job_description=job.job_description
     )
 
-    # Save AI analysis to database
+    # Save analysis to database
     job_analysis = JobAnalysis(
         job_id=job.id,
         analysis=analysis
@@ -94,3 +97,55 @@ def analyze_job(
         "job_id": job.id,
         "analysis": analysis
     }
+
+
+@router.get(
+    "/{job_id}/report"
+)
+def generate_job_report(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Find the job
+    job = (
+        db.query(Job)
+        .filter(Job.id == job_id)
+        .first()
+    )
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    # Find the latest analysis
+    analysis = (
+        db.query(JobAnalysis)
+        .filter(JobAnalysis.job_id == job.id)
+        .order_by(JobAnalysis.created_at.desc())
+        .first()
+    )
+
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job analysis not found. Analyze the job first."
+        )
+
+    # Generate PDF
+    pdf = create_job_analysis_pdf(
+        job=job,
+        analysis=analysis
+    )
+
+    return StreamingResponse(
+        pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="job_{job.id}_analysis.pdf"'
+            )
+        }
+    )
