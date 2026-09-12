@@ -5,7 +5,12 @@ from app.auth.models import User
 from app.auth.security import get_current_user
 from app.database import get_db
 from app.models import Job, JobApplication
-from app.schemas import JobApplicationCreate, JobApplicationResponse
+from app.schemas import (
+    JobApplicationCreate,
+    JobApplicationResponse,
+    CoverLetterResponse
+)
+from app.services.ai import generate_cover_letter
 
 
 router = APIRouter(
@@ -49,6 +54,7 @@ def create_application(
 
     return application
 
+
 @router.get(
     "",
     response_model=list[JobApplicationResponse]
@@ -64,3 +70,51 @@ def get_applications(
     )
 
     return applications
+
+
+@router.post(
+    "/{application_id}/cover-letter",
+    response_model=CoverLetterResponse
+)
+def create_cover_letter(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    application = (
+        db.query(JobApplication)
+        .filter(
+            JobApplication.id == application_id,
+            JobApplication.user_id == current_user.id
+        )
+        .first()
+    )
+
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+
+    job = (
+        db.query(Job)
+        .filter(Job.id == application.job_id)
+        .first()
+    )
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    cover_letter = generate_cover_letter(
+        title=job.title,
+        company=job.company,
+        job_description=job.job_description
+    )
+
+    return {
+        "application_id": application.id,
+        "cover_letter": cover_letter
+    }

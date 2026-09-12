@@ -24,6 +24,7 @@ class JobApplication(Base):
     job_id = Column(Integer, nullable=False, index=True)
     user_id = Column(Integer, nullable=False, index=True)
     status = Column(String(50), nullable=False, default="applied")
+    notes = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()

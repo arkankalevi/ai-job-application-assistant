@@ -54,3 +54,44 @@ Keep the answer practical and easy to understand.
     print("Gemini response received.")
 
     return interaction.output_text
+
+
+def generate_cover_letter(
+    title: str,
+    company: str,
+    job_description: str
+) -> str:
+
+    prompt = f"""
+You are an expert career assistant.
+
+Write a professional but natural cover letter for the following job.
+
+Job Title:
+{title}
+
+Company:
+{company}
+
+Job Description:
+{job_description}
+
+Requirements:
+- Write in English.
+- Keep it concise.
+- Make it specific to the job description.
+- Do not invent experience, education, or achievements.
+- Use a professional but human tone.
+- Return only the cover letter.
+"""
+
+    print("Sending cover letter request to Gemini...")
+
+    interaction = client.interactions.create(
+        model="gemini-3.6-flash",
+        input=prompt
+    )
+
+    print("Gemini cover letter response received.")
+
+    return interaction.output_text

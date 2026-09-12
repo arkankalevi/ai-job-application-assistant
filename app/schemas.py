@@ -38,3 +38,7 @@ class JobApplicationResponse(BaseModel):
 class JobAnalysisResponse(BaseModel):
     job_id: int
     analysis: str
+
+class CoverLetterResponse(BaseModel):
+    application_id: int
+    cover_letter: str
