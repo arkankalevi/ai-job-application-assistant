@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.auth.models import User
-from app.models import Job, JobApplication, JobAnalysis
+from app.models import Job, JobApplication, JobAnalysis, CoverLetter
 from app.auth.routes import router as auth_router
 from app.database import Base, engine
 from app.routes.jobs import router as jobs_router
